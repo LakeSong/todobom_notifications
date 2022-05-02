@@ -60,7 +60,7 @@ export const createNewJob = async (task) => {
 export const getAllJobs = async () => {
   return await pool.query(
     `SELECT * FROM notification_jobs JOIN (
-            SELECT task_id, user_id, users.*
+            SELECT task_id, user_id, users.display_name, users.notification_tokens
             FROM group_user_tasks 
             LEFT JOIN users
             ON users.id = group_user_tasks.user_id
@@ -69,10 +69,24 @@ export const getAllJobs = async () => {
   );
 };
 
-export const getJobByTaskId = async (id) => {
-  return await pool.query(`SELECT * FROM notification_jobs WHERE task_id=$1`, [
-    id,
-  ]);
+export const getDbJobByName = async (jobId) => {
+  return await pool.query(
+    `SELECT * FROM notification_jobs WHERE id=$1`,
+    [jobId]
+  );
+}
+
+export const getDbJobByTaskId = async (id) => {
+  return await pool.query(
+    `SELECT notification_jobs.*, display_name, notification_tokens 
+      FROM notification_jobs 
+      JOIN (
+        SELECT group_user_tasks.task_id, display_name, notification_tokens 
+        FROM group_user_tasks 
+        LEFT JOIN users ON users.id = group_user_tasks.user_id) AS tasks_user
+        ON tasks_user.task_id = notification_jobs.task_id WHERE notification_jobs.task_id=$1`,
+    [id]
+  );
 };
 
 export const deleteJobById = async (id) => {
