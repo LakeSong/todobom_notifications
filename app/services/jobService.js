@@ -22,29 +22,21 @@ export const getScheduledJobs = () => {
   return scheduledJobs;
 };
 
-export const createNewJob = async (task) => {
-  //if task is urgent
-  //  create urgent task from 5 minutes before due date
-  let dbJob = await createNewDbJob(task);
+export const createNewJob = async (task, job = null) => {
+  let dbJob = job || await createNewDbJob(task);
   let jobDetails = dbJob.rows[0];
   if (task.urgent) {
     scheduleUrgentJob(jobDetails.id, task);
   } else {
     scheduleRegularJob(jobDetails.id, task);
   }
-  let onTimeDbJob = await createNewDbJob(task);
+  let onTimeDbJob = job || await createNewDbJob(task);
   let snoozeJobDetails = onTimeDbJob.rows[0];
   if (task.snooze_interval) {
     scheduleSnoozedJob(snoozeJobDetails.id, task);
   } else {
     scheduleOnTimeJob(onTimeDbJob.id, task);
   }
-
-  //if regular task
-  //  create task 5 minutes before
-
-  //if task is snoozed
-  //  create a recurrence rule to run every x minutes from the due date
 };
 
 export const scheduleUrgentJob = (jobId, task) => {
@@ -93,23 +85,12 @@ export const scheduleOnTimeJob = (jobId, task) => {
 
 export const scheduleNewJob = (jobId, task) => {
   const notificationTime = generateNotificationTime(task.due_date);
-  const startTime = new Date(Date.now() + 5000);
-  const endTime = new Date(startTime.getTime() + 20000);
-  let rule;
-  if (task.urgent) {
-    rule = { start: startTime, end: endTime, rule: "*/3 * * * * *" };
-  }
 
-  //   scheduleJob(`${jobId}`, notificationTime, () => {
-  scheduleJob(
-    `${jobId}`,
-    { start: startTime, end: endTime, rule: "*/3 * * * * *" },
-    () => {
-      sendNotification({ ...task, job_id: jobId }).then(() =>
-        deleteJobById(jobId)
-      );
-    }
-  );
+  scheduleJob(`${jobId}`, notificationTime, () => {
+    sendNotification({ ...task, job_id: jobId }).then(() =>
+      deleteJobById(jobId)
+    );
+  });
 };
 
 export const scheduleMainDailyJob = () => {
@@ -127,7 +108,7 @@ export const scheduleMainDailyJob = () => {
 };
 
 export const deleteOldJobsDaily = () => {
-  scheduleJob("daily-cleanup", '0 0 * * *', deleteJobs); // running everyday at midnight
+  scheduleJob("daily-cleanup", "0 0 * * *", deleteJobs); // running everyday at midnight
 };
 
 export const getJobByTaskId = async (taskId) => {
@@ -148,7 +129,7 @@ export const initializeJobs = async () => {
     if (new Date(job.scheduled_time) > Date.now()) {
       const rawTask = await getTaskById(job.task_id);
       const task = rawTask.rows[0];
-      await scheduleNewJob(job.id, task);
+      createNewJob(task, job);
     }
   });
 };
@@ -169,7 +150,7 @@ export const createJobsInTimeRange = async () => {
 };
 
 const deleteJobs = async () => {
-    console.log('Started deletion');
-    await deleteOldJobs();
-    console.log('finished deletion');
-}
+  console.log("Started deletion");
+  await deleteOldJobs();
+  console.log("finished deletion");
+};
