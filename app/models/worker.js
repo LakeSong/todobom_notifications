@@ -70,11 +70,10 @@ export const getAllJobs = async () => {
 };
 
 export const getDbJobByName = async (jobId) => {
-  return await pool.query(
-    `SELECT * FROM notification_jobs WHERE id=$1`,
-    [jobId]
-  );
-}
+  return await pool.query(`SELECT * FROM notification_jobs WHERE id=$1`, [
+    jobId,
+  ]);
+};
 
 export const getDbJobByTaskId = async (id) => {
   return await pool.query(
@@ -94,5 +93,14 @@ export const deleteJobById = async (id) => {
     return await client.query(`DELETE FROM notification_jobs WHERE id=$1`, [
       id,
     ]);
+  });
+};
+
+export const deleteOldJobs = async () => {
+  return executeTransaction(async (client) => {
+    return await client.query(
+      "DELETE FROM notification_jobs WHERE scheduled_time < $1",
+      [new Date(Date.now())]
+    );
   });
 };

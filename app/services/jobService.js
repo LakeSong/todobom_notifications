@@ -3,6 +3,7 @@ import { generateNotificationTime } from "../helpers/timeHelper.js";
 import {
   createNewJob as createNewDbJob,
   deleteJobById,
+  deleteOldJobs,
   getAllJobs,
   getAllTasks,
   getDbJobByName,
@@ -121,8 +122,12 @@ export const scheduleMainDailyJob = () => {
   rule.minute = minutes;
   rule.second = seconds + 5;
 
-  console.log(`The job will run daily at ${date.getTime()}`);
+  console.log(`The job will run daily at ${date}`);
   scheduleJob("daily-job", rule, createJobsInTimeRange);
+};
+
+export const deleteOldJobsDaily = () => {
+  scheduleJob("daily-cleanup", '0 0 * * *', deleteJobs); // running everyday at midnight
 };
 
 export const getJobByTaskId = async (taskId) => {
@@ -153,7 +158,7 @@ export const createJobsInTimeRange = async () => {
   const rawTasks = await getAllTasks();
   const allTasksInTimeRange = rawTasks.rows;
   allTasksInTimeRange?.forEach(async (task) => {
-    if (!task.user_id) {
+    if (task.user_id) {
       const rawJob = await getDbJobByTaskId(task.id);
       const job = rawJob?.rows[0];
       job && (await cancelJob(job.id));
@@ -162,3 +167,9 @@ export const createJobsInTimeRange = async () => {
   });
   console.log("Finished");
 };
+
+const deleteJobs = async () => {
+    console.log('Started deletion');
+    await deleteOldJobs();
+    console.log('finished deletion');
+}

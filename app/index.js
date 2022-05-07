@@ -5,6 +5,7 @@ config();
 import { connect } from "./models/subscriber.js";
 import {
   cancelJob,
+  deleteOldJobsDaily,
   getScheduledJobs,
   initializeJobs,
   scheduleMainDailyJob,
@@ -37,4 +38,5 @@ app.listen(port, async () => {
   await connect();
   await initializeJobs();
   scheduleMainDailyJob();
+  deleteOldJobsDaily();
 });
