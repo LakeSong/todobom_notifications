@@ -8,7 +8,7 @@ const getMessageByUrgency = (data, pushToken) => {
   let message = {
     to: pushToken,
     sound: "default",
-    body: `${data?.title} is still waiting for you`,
+    body: `${data?.title} is still waiting for you`.trim(),
     data: omit(data, "notification_tokens"),
   };
   const header = `Hey ${data?.display_name}, don't forget!` 
