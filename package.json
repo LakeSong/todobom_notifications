@@ -19,7 +19,7 @@
   },
   "scripts": {
     "test": "jest --forceExit --runInBand",
-    "start": "node server.js"
+    "start": "node app/index.js"
   },
   "type": "module"
 }
