@@ -17,5 +17,9 @@
     "pg": "^8.7.3",
     "pg-listen": "^1.7.0"
   },
+  "scripts": {
+    "test": "jest --forceExit --runInBand",
+    "start": "node server.js"
+  },
   "type": "module"
 }
