@@ -22,9 +22,9 @@ export const handleDbEvent = {
   UPDATE: async (task) => {
     await verifyDate(task, async (taskDetails) => {
       const rawJob = await getDbJobByTaskId(taskDetails.id);
-      rawJob?.rows.forEach(async job => {
-          job && (await cancelJob(job.id));
-      })
+      rawJob?.rows.forEach(async (job) => {
+        job && (await cancelJob(job.id));
+      });
       if (!taskDetails.done && taskDetails.user_id) {
         createNewJob(taskDetails);
       }
@@ -32,9 +32,8 @@ export const handleDbEvent = {
   },
   DELETE: async (task) => {
     const rawJob = await getDbJobByTaskId(task.id);
-    rawJob?.rows.forEach(async job => {
-        job && (await cancelJob(job.id));
-    })
-    job && (await cancelJob(job.id));
+    rawJob?.rows.forEach(async (job) => {
+      job && (await cancelJob(job.id));
+    });
   },
 };
