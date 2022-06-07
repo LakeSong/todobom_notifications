@@ -12,6 +12,7 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false,
   },
+  max: 5
 });
 
 const executeTransaction = async (callback) => {
@@ -37,7 +38,7 @@ export const getTaskById = async (id) => {
   return await pool.query(
     `SELECT tasks.*, user_tasks.* FROM tasks
         JOIN (
-            select task_id, user_id, users.notification_tokens, users.display_name 
+            select task_id, user_id, owner_id, users.notification_tokens, users.display_name 
             from group_user_tasks 
             left join users
             on users.id = group_user_tasks.user_id
@@ -51,8 +52,8 @@ export const getTaskById = async (id) => {
 export const createNewJob = async (task) => {
   return executeTransaction(async (client) => {
     return await client.query(
-      `INSERT INTO notification_jobs (scheduled_time, task_id) VALUES ($1, $2) RETURNING *`,
-      [task.due_date, task.id]
+      `INSERT INTO notification_jobs (scheduled_time, task_id, target_user_id) VALUES ($1, $2, $3) RETURNING *`,
+      [task.due_date, task.id, task.user_id]
     );
   });
 };
