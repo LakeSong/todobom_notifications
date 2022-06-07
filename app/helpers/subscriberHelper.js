@@ -14,7 +14,7 @@ const verifyDate = async (task, callback) => {
 
 export const handleDbEvent = {
   INSERT: async (task) => {
-    await verifyDate(task, (taskDetails) => {
+    await verifyDate(task, async (taskDetails) => {
       if (taskDetails.user_id && taskDetails.user_id !== taskDetails.owner_id) {
         notifyUserOnTaskAssign(taskDetails);
         await createNewJob(taskDetails);
