@@ -30,7 +30,7 @@ app.get("/", (req, res) => {
 
 app.delete("/:id", async (req, res) => {
   const id = req.params.id;
-  id && (await cancelJob(`${id}`));
+  id !== "undefined" && (await cancelJob(`${id}`));
   res.sendStatus(200);
 });
 
