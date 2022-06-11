@@ -1,5 +1,9 @@
 import { scheduleJob, scheduledJobs, RecurrenceRule } from "node-schedule";
-import { generateNotificationTime } from "../helpers/timeHelper.js";
+import {
+  generateNotificationTime,
+  getPriorDateByDays,
+  getTimeDifferenceInDays,
+} from "../helpers/timeHelper.js";
 import {
   createNewJob as createNewDbJob,
   deleteJobById,
@@ -10,7 +14,10 @@ import {
   getDbJobByTaskId,
   getTaskById,
 } from "../models/worker.js";
-import { sendNotification } from "./notificationService.js";
+import {
+  sendNotification,
+  sendReminderNotification,
+} from "./notificationService.js";
 
 export const jobBuilder = async (task) => {
   let dbJob = await createNewDbJob(task);
@@ -22,20 +29,49 @@ export const getScheduledJobs = () => {
   return scheduledJobs;
 };
 
+export const createLongTermJobs = async (task, job = null) => {
+  const jobDate = new Date(task.due_date);
+  const timeDifferenceInDays = getTimeDifferenceInDays(jobDate, new Date());
+  if (timeDifferenceInDays > 0) {
+    let dbJob = job || (await createNewDbJob(task));
+    let jobDetails = dbJob.rows[0];
+    scheduleJobEveryHour(jobDetails.id, task);
+    // schedule notification every hour
+  }
+  if (timeDifferenceInDays > 1) {
+    let dbJob = job || (await createNewDbJob(task));
+    let jobDetails = dbJob.rows[0];
+    scheduleJobTwiceADay(jobDetails.id, task);
+    // schedule notification twice a day
+  }
+  if (timeDifferenceInDays > 3) {
+    let dbJob = job || (await createNewDbJob(task));
+    let jobDetails = dbJob.rows[0];
+    scheduleJobOnceADay(jobDetails.id, task);
+    // schedule notification once a day
+  }
+  if (timeDifferenceInDays > 7) {
+    let dbJob = job || (await createNewDbJob(task));
+    let jobDetails = dbJob.rows[0];
+    scheduleJobOnceAWeek(jobDetails.id, task);
+    // schedule notification once a week
+  }
+};
+
 export const createNewJob = async (task, job = null) => {
-  let dbJob = job || await createNewDbJob(task);
+  let dbJob = job || (await createNewDbJob(task));
   let jobDetails = dbJob.rows[0];
   if (task.urgent) {
     scheduleUrgentJob(jobDetails.id, task);
   } else {
     scheduleRegularJob(jobDetails.id, task);
   }
-  let onTimeDbJob = job || await createNewDbJob(task);
+  let onTimeDbJob = job || (await createNewDbJob(task));
   let snoozeJobDetails = onTimeDbJob.rows[0];
   if (task.snooze_interval) {
     scheduleSnoozedJob(snoozeJobDetails.id, task);
   } else {
-    scheduleOnTimeJob(onTimeDbJob.id, task);
+    scheduleOnTimeJob(snoozeJobDetails.id, task);
   }
 };
 
@@ -153,4 +189,64 @@ const deleteJobs = async () => {
   console.log("Started deletion");
   await deleteOldJobs();
   console.log("finished deletion");
+};
+
+const scheduleJobOnceADay = (jobId, task) => {
+  const dueDate = new Date(task.due_date);
+  const endTime = getPriorDateByDays(dueDate, 3);
+  const startTime = getPriorDateByDays(endTime, 7);
+  scheduleJob(
+    `${jobId}`,
+    { start: startTime, end: endTime, rule: "0 12 * * *" },
+    () => {
+      sendReminderNotification({ ...task, job_id: jobId }).then(() =>
+        deleteJobById(jobId)
+      );
+    }
+  );
+};
+
+const scheduleJobTwiceADay = (jobId, task) => {
+  const dueDate = new Date(task.due_date);
+  const endTime = getPriorDateByDays(dueDate, 1);
+  const startTime = getPriorDateByDays(endTime, 3);
+  scheduleJob(
+    `${jobId}`,
+    { start: startTime, end: endTime, rule: "00 12,18 * * *" },
+    () => {
+      sendReminderNotification({ ...task, job_id: jobId }).then(() =>
+        deleteJobById(jobId)
+      );
+    }
+  );
+};
+
+const scheduleJobEveryHour = (jobId, task) => {
+  const endTime = new Date(task.due_date);
+  const startTime = getPriorDateByDays(endTime, 1); // not sure when should start
+  scheduleJob(
+    `${jobId}`,
+    { start: startTime, end: endTime, rule: "0 * * * *" },
+    () => {
+      sendReminderNotification({ ...task, job_id: jobId }).then(() =>
+        deleteJobById(jobId)
+      );
+    }
+  );
+};
+
+const scheduleJobOnceAWeek = (jobId, task) => {
+  //actuallu runs every sunday and if we want 7 days back from now we can change the last * to something between 0 and 6
+  const endTime = new Date(task.due_date);
+  const startTime = new Date();
+  const day = startTime.getDay();
+  scheduleJob(
+    `${jobId}`,
+    { start: startTime, end: endTime, rule: `0 12 * * ${day}` },
+    () => {
+      sendReminderNotification({ ...task, job_id: jobId }).then(() =>
+        deleteJobById(jobId)
+      );
+    }
+  );
 };

@@ -1,5 +1,5 @@
 import { getTaskById, getDbJobByTaskId } from "../models/worker.js";
-import { cancelJob, createNewJob } from "../services/jobService.js";
+import { cancelJob, createLongTermJobs, createNewJob } from "../services/jobService.js";
 import { notifyUserOnTaskAssign } from "../services/notificationService.js";
 import { generateDateLimit } from "./timeHelper.js";
 
@@ -16,8 +16,9 @@ export const handleDbEvent = {
   INSERT: async (task) => {
     await verifyDate(task, async (taskDetails) => {
       if (taskDetails.user_id && taskDetails.user_id !== taskDetails.owner_id) {
-        notifyUserOnTaskAssign(taskDetails);
+        await notifyUserOnTaskAssign(taskDetails);
         await createNewJob(taskDetails);
+        await createLongTermJobs(taskDetails);
       }
     });
   },
@@ -33,7 +34,8 @@ export const handleDbEvent = {
       });
       if (!taskDetails.done && taskDetails.user_id) {
         await createNewJob(taskDetails);
-        shouldNotify && notifyUserOnTaskAssign(taskDetails);
+        await createLongTermJobs(taskDetails);
+        shouldNotify && await notifyUserOnTaskAssign(taskDetails);
       }
     });
   },

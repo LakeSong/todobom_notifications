@@ -86,3 +86,52 @@ export const notifyUserOnTaskAssign = async (data) => {
     }
   })();
 };
+
+
+const getReminderMessage = (data, pushToken) => ({
+  to: pushToken,
+  sound: "default",
+  title: `Hey ${data?.display_name}, don't forget!`.trim(),
+  body: `${data?.title} is still waiting for you!`.trim(),
+  data: omit(data, "notification_tokens"),
+});
+
+
+
+export const sendNotificationWithCustomMessage = async (data, messageGenerator) => {
+  let messages = [];
+  data.notification_tokens?.forEach((pushToken, index) => {
+    if (!Expo.isExpoPushToken(pushToken)) {
+      console.error(`Push token ${pushToken} is not a valid Expo push token`);
+    }
+    const message = messageGenerator(data, pushToken);
+    messages.push(message);
+  });
+
+  let chunks = expo.chunkPushNotifications(messages);
+  let tickets = [];
+
+  (async () => {
+    for (let chunk of chunks) {
+      try {
+        let ticketChunk = await expo.sendPushNotificationsAsync(chunk);
+        console.log(ticketChunk);
+        tickets.push(...ticketChunk);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  })();
+};
+
+export const sendReminderNotification = async (data) => {
+  return sendNotificationWithCustomMessage(data, getReminderMessage);
+}
+
+export const sendAssignNotification = async (data) => {
+  return sendNotificationWithCustomMessage(data, getAssignMessage);
+}
+
+export const sendUrgentNotification = async (data) => {
+  return sendNotificationWithCustomMessage(data, getMessageByUrgency);
+}

@@ -25,7 +25,19 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 app.get("/", (req, res) => {
-  res.json(Object.keys(getScheduledJobs()).length);
+  const scheduledJobs = getScheduledJobs();
+  const jobsForDisplay = Object.entries(scheduledJobs).map(([id, job]) => ({
+    [id]: {
+      runsAt: new Date(job.nextInvocation()),
+      pending: [
+        job.pendingInvocations.map(item => ({
+          endDate: new Date(item.endDate),
+          rule: item.recurrenceRule.stringify && item.recurrenceRule?.stringify(),
+        }))
+      ]
+    }
+  }))
+  res.json(jobsForDisplay);
 });
 
 app.delete("/:id", async (req, res) => {
@@ -37,7 +49,7 @@ app.delete("/:id", async (req, res) => {
 app.listen(port, async () => {
   console.log(`Server listening on port ${port}`);
   await connect();
-  await initializeJobs();
-  scheduleMainDailyJob();
+  // await initializeJobs();
+  // scheduleMainDailyJob();
   deleteOldJobsDaily();
 });
